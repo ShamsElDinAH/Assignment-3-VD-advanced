@@ -1,0 +1,406 @@
+\begin{lstlisting}
+%% Question 1 
+%% 1.3 test the model with sine wave steering 0.6 Hz and 30deg steering 
+
+clear all;
+run('initModel')
+
+u0 = 100/3.6;
+manoeuver = 5; % Sine wave 30deg 0.5Hz
+makePlots = 1; 
+simTime = 20;
+
+run('runSimulation.m')
+%% 1.4 Speed of 100km/h with different steering until fail
+
+clear all;
+run('initModel')
+
+u0 = 100/3.6;
+
+manoeuver = 3;
+loadTrans = 0;
+
+testAmplitudes = 60:5:300; %deg
+
+for i2 = 1:length(testAmplitudes)
+    strAmpSWD = testAmplitudes(i2);
+    run('runSimulation');
+    if TestsPass == 0
+        strAmpSWD
+        break
+    end
+end
+
+run('postFcn.m')
+%% Question 2
+%% 2.1 complete equations 
+%% 2.2 and 2.3 simulation with 10deg steering, sweep upto 20Hz
+
+clear;
+run('initModel')
+
+
+u0 = 100/3.6;
+
+strAmpSS    = 10;
+strMaxFreq  = 20; 
+
+manoeuver = 2; % sweep manouever 
+loadTrans = 1;
+simTime     = 100;
+
+run('runSimulation');
+
+
+fs=1/sampleTime;
+[tf,f] = tfestimate(deltaf,r,[],[],[],fs);
+gain = abs(tf);
+phase = rad2deg(angle(tf));
+coherence = mscohere(deltaf,r);
+
+idx_f = find(f>0 & f<20);
+
+figure(1);
+subplot(3,1,1)
+semilogx(f(idx_f),gain(idx_f)); grid on
+title('Gain')
+ylabel('Gain')
+
+subplot(3,1,2)
+semilogx(f(idx_f),phase(idx_f)); grid on
+title('Phase')
+ylabel('Phase angle [deg]')
+
+subplot(3,1,3)
+semilogx(f(idx_f),coherence(idx_f)); grid on
+title('Coherence')
+xlabel('Frequency [Hz]')
+% 2.4  Gain and natural frequency
+[maxGain, maxGain_i] = max(gain(idx_f)); % 
+ResonanceFreq = f(idx_f(maxGain_i)); % the resonance frequency 
+%% 2.5 Speed of 100kmh with differnt steering until fail with load transfer
+
+clear;
+run('initModel')
+
+manoeuver = 3; % SWD
+loadTrans = 1;
+strFreq     =  0.5615; % changed to resonance 0.7 % This frequency is from the NHTSA ESC test specifications. 
+SWDend      = 1/strFreq+dwell+tStart;
+SWDduration = 1/strFreq+0.5;
+
+testAmplitudes = 60:5:300; %deg
+
+for i2 = 1:length(testAmplitudes)
+    strAmpSWD = testAmplitudes(i2);
+    run('runSimulation');
+    if TestsPass == 0
+        strAmpSWD
+        break
+    end
+end
+
+run('postFcn.m')
+
+% plot side slip 
+
+figure;
+plot(t,rad2deg(v./u)); grid on
+title('Side slip without ESC. SWA = 140deg')
+xlabel('Time [s]')
+ylabel('side slip angle [deg]')
+
+% 140 degs 
+%% Question 3
+%% 3.1, 3.2 and 3.3 Testing limits for ESC 
+
+clear;
+run('initModel')
+
+manoeuver = 3; % sweep manouever 
+loadTrans = 1;
+makePlots = 0;
+strFreq     =  0.5615; % changed to resonance 0.7 % This frequency is from the NHTSA ESC test specifications. 
+SWDend      = 1/strFreq+dwell+tStart;
+SWDduration = 1/strFreq+0.5;
+
+testAmplitudes = 60:5:140; %deg
+
+ESC = 1;
+
+for i2 = 1:length(testAmplitudes)
+    strAmpSWD = testAmplitudes(i2);
+    run('runSimulation');
+    if TestsPass == 0
+        strAmpSWD
+        break
+    end
+end
+
+% plot side slip
+figure;
+plot(t,rad2deg(v./u)); grid on
+title('Side slip without ESC. SWA = 140deg')
+xlabel('Time [s]')
+ylabel('side slip angle [deg]')
+%% Question 4 
+%% 4.1 completed equations in the simulink 
+%% 4.2  Evaluating the body roll gradient
+
+clear;
+run('initModel')
+
+manoeuver = 1; % Ramp
+loadTrans = 1;
+makePlots = 0;
+simTime = 100;
+
+
+
+run('runSimulation');
+
+idx_ay = find(abs(ay)>2 & abs(ay)<4);
+
+figure(2);
+title('Roll Gradient')
+set(gca,'ColorOrderIndex',1);
+plot(ay(idx_ay),rad2deg(phi(idx_ay))); grid on; hold on
+xlabel('ay [m/s^2]')
+ylabel('\phi [deg]')
+
+figure(3)
+subplot(2,1,1)
+set(gca,'ColorOrderIndex',1);
+plot(t,Fz); hold on
+subplot(2,1,2)
+set(gca,'ColorOrderIndex',1);
+plot(t,MxReq); hold on
+
+
+rollGradient = (phi(idx_ay(1))-phi(idx_ay(end)))/(ay(idx_ay(1))-ay(idx_ay(end)));
+
+% rollGradient =
+% 
+%     0.0137
+%%  4.2 AARB reducing rollgradient to 70%
+
+clear;
+run('initModel')
+
+manoeuver = 1; % Ramp
+loadTrans = 1;
+makePlots = 0;
+simTime = 100;
+rollGradient =  0.0137;
+rollGrad_70 = 1;
+
+AARB = 1;
+
+run('runSimulation');
+
+idx_ay = find(abs(ay)>2 & abs(ay)<4);
+
+figure(2);
+set(gca,'ColorOrderIndex',1);
+plot(ay(idx_ay),rad2deg(phi(idx_ay)),'--'); grid on; hold on
+xlabel('ay [m/s^2]')
+ylabel('\phi [deg]')
+legend('AARB off', 'AARB on')
+
+rollGradient2 = (phi(idx_ay(1))-phi(idx_ay(end)))/(ay(idx_ay(1))-ay(idx_ay(end)));
+
+figure(3)
+subplot(2,1,1)
+set(gca,'ColorOrderIndex',1);
+plot(t,Fz,'--'); hold on; grid on 
+title('Vertical force Fz')
+ylabel('Force [N]')
+legend('Fz1 AARB off','Fz2 AARB off','Fz3 AARB off','Fz4 AARB off', ... 
+    'Fz1 AARB on','Fz2 AARB on','Fz3 AARB on','Fz4 AARB on')
+
+subplot(2,1,2)
+set(gca,'ColorOrderIndex',1);
+plot(t,MxReq,'--'); hold on; grid on
+title('AARB torque request')
+legend('Front AARB off', 'Rear AARB off', 'Front AARB on', 'Rear AARB on' )
+ylabel('Torque [Nm]')
+xlabel('Time [s]')
+
+PercentageDiff = rollGradient2/rollGradient;
+%% 4.3 Testing step steer and release 
+
+clear;
+run('initModel')
+
+manoeuver = 4; % Step and release
+loadTrans = 1;
+make_understeer = 1; % 0 = is normal, 1 more understeer, -1 less understeer
+makePlots = 1;
+simTime = 10;
+strAmpSS = 140;
+rollGradient =  0.0137;
+
+for i2 =1:2
+    AARB = 3-i2; % first without anti roll bar then with
+    run('runSimulation');
+    
+    idx_ay = 1:1:length(ay);%find(abs(ay)>2 & abs(ay)<4);
+
+    if i2 == 1
+        lineType = '-';
+    else
+        lineType = '--';
+    end
+
+    figure(4)%'Name','Rollgradient');
+    set(gca,'ColorOrderIndex',1);
+    plot(ay(idx_ay),rad2deg(phi(idx_ay)),lineType); grid on; hold on
+    xlabel('ay [m/s^2]')
+    ylabel('\phi [deg]')
+    
+    rollGradient2 = (phi(idx_ay(1))-phi(idx_ay(end)))/(ay(idx_ay(1))-ay(idx_ay(end)));
+    
+    figure(5)%'Name','Forces')
+    subplot(2,1,1)
+    set(gca,'ColorOrderIndex',1)
+    plot(t,Fz,lineType); hold on; grid on;
+    subplot(2,1,2)
+    set(gca,'ColorOrderIndex',1)
+    plot(t,MxReq,lineType); hold on; grid on;
+    
+%     figure(6)%'Name','slips',)
+%     subplot(1,2,1)
+%     set(gca,'ColorOrderIndex',1)
+%     plot(alpha(:,1), Fy(:,1), lineType); hold on; grid on;
+%     plot(alpha(:,2), Fy(:,2), lineType); hold on;
+%     subplot(1,2,2)
+%     set(gca,'ColorOrderIndex',1)
+%     plot(alpha(:,3), Fy(:,3), lineType); hold on; grid on;
+%     plot(alpha(:,4), Fy(:,4), lineType); hold on;q
+end
+
+figure(4)
+title('Vehicle roll')
+legend('AARB off', 'AARB on')
+
+figure(5)
+subplot(2,1,1)
+title('Vertical tyre forces Fz')
+ylabel('Force [N]')
+legend('Fz1 AARB off','Fz2 AARB off','Fz3 AARB off','Fz4 AARB off', ...
+    'Fz1 AARB on','Fz2 AARB on','Fz3 AARB on','Fz4 AARB on')
+subplot(2,1,2)
+title('AARB torque request')
+xlabel('Time [s]')
+ylabel('Torque [Nm]')
+legend('Front AARB off', ' Rear AARB off', 'Front AARB on', 'Rear AARB on')
+%% 4.4 making the vehicle understeer with the AARB
+
+clear;
+run('initModel')
+
+strFreq     =  0.5615; % changed to resonance 0.7 % This frequency is from the NHTSA ESC test specifications. 
+SWDend      = 1/strFreq+dwell+tStart;
+SWDduration = 1/strFreq+0.5;
+
+manoeuver = 3; % sine with dwell 
+loadTrans = 1;
+makePlots = 1;
+simTime = 10;
+rollGradient =  0.0137;
+make_understeer = 1;
+
+strAmpSWD = 140;
+
+for i2 =1:2
+    AARB = 3-i2; % first without anti roll bar then with
+    run('runSimulation');
+    
+    idx_ay = 1:1:length(ay);%find(abs(ay)>2 & abs(ay)<4);
+
+    if i2 == 1
+        lineType = '-';
+    else
+        lineType = '--';
+    end
+    
+%     figure(12)%'Name','Rollgradient');
+%     plot(ay(idx_ay),rad2deg(phi(idx_ay)),lineType); grid on; hold on
+%     xlabel('ay [m/s^2]')
+%     ylabel('\phi [deg]')
+%     
+%     rollGradient2 = (phi(idx_ay(1))-phi(idx_ay(end)))/(ay(idx_ay(1))-ay(idx_ay(end)));
+%     
+%     figure(13)%'Name','Forces')
+%     subplot(2,1,1)
+%     plot(t,Fz,lineType); hold on
+%     subplot(2,1,2)
+%     plot(t,MxReq,lineType); hold on
+%     
+%     figure(14)%'Name','slips',)
+%     subplot(1,2,1)
+%     plot(alpha(:,1), Fy(:,1), lineType); hold on; grid on;
+%     plot(alpha(:,2), Fy(:,2), lineType);
+%     subplot(1,2,2)
+%     plot(alpha(:,3), Fy(:,3), lineType); hold on; grid on;
+%     plot(alpha(:,4), Fy(:,4), lineType);
+    
+    figure(5)%'Name','Forces')
+    subplot(2,1,1)
+    set(gca,'ColorOrderIndex',1)
+    plot(t,Fz,lineType); hold on; grid on;
+    subplot(2,1,2)
+    set(gca,'ColorOrderIndex',1)
+    plot(t,MxReq,lineType); hold on; grid on;
+end
+
+figure(5)
+subplot(2,1,1)
+title('Vertical tyre forces Fz')
+ylabel('Force [N]')
+legend('Fz1 AARB off','Fz2 AARB off','Fz3 AARB off','Fz4 AARB off', ...
+    'Fz1 AARB on','Fz2 AARB on','Fz3 AARB on','Fz4 AARB on')
+subplot(2,1,2)
+title('AARB torque request')
+xlabel('Time [s]')
+ylabel('Torque [Nm]')
+legend('Front AARB off', ' Rear AARB off', 'Front AARB on', 'Rear AARB on')
+
+% 
+% figure(13)
+% subplot(2,1,1)
+% legend('1','2','3','4','1','2','3','4')
+%% 4.4 testing antirol bar with swd
+
+
+clear;
+run('initModel')
+
+manoeuver = 3; % sine with dwell 
+loadTrans = 1;
+makePlots = 0;
+simTime = 10;
+rollGradient =  0.0137;
+make_understeer = 1;
+
+strFreq     =  0.5615; % changed to resonance 0.7 % This frequency is from the NHTSA ESC test specifications. 
+SWDend      = 1/strFreq+dwell+tStart;
+SWDduration = 1/strFreq+0.5;
+
+AARB = 1;
+
+testAmplitudes = 60:5:300; %deg
+
+for i2 = 1:length(testAmplitudes)
+    strAmpSWD = testAmplitudes(i2);
+    run('runSimulation');
+    if TestsPass == 0
+        strAmpSWD
+        break
+    end
+end
+
+
+run('postFcn');
+\end{lstlisting}
